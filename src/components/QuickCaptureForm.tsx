@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 interface QuickCaptureFormProps {
   onSuccess?: () => void;
+  initialDueDate?: Date;
 }
 
 interface Client {
@@ -23,7 +24,7 @@ interface Client {
   name: string;
 }
 
-const QuickCaptureForm = ({ onSuccess }: QuickCaptureFormProps) => {
+const QuickCaptureForm = ({ onSuccess, initialDueDate }: QuickCaptureFormProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<string>("");
@@ -57,7 +58,7 @@ const QuickCaptureForm = ({ onSuccess }: QuickCaptureFormProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("no user found");
 
-      const { error } = await supabase.from("tasks").insert({
+      const taskData: any = {
         title: title.trim(),
         description: description.trim() || null,
         category: category || null,
@@ -65,7 +66,25 @@ const QuickCaptureForm = ({ onSuccess }: QuickCaptureFormProps) => {
         priority: isUrgent ? "urgent" : "normal",
         status: "inbox",
         user_id: user.id,
-      });
+      };
+
+      if (initialDueDate) {
+        taskData.due_date = initialDueDate.toISOString().split('T')[0];
+        // Set status based on date
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        if (initialDueDate.toDateString() === today.toDateString()) {
+          taskData.status = "today";
+        } else if (initialDueDate.toDateString() === tomorrow.toDateString()) {
+          taskData.status = "tomorrow";
+        } else {
+          taskData.status = "this_week";
+        }
+      }
+
+      const { error } = await supabase.from("tasks").insert(taskData);
 
       if (error) throw error;
 

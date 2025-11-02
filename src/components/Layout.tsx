@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, LogOut } from "lucide-react";
+import { Plus, LogOut, Calendar } from "lucide-react";
 import QuickCaptureModal from "./QuickCaptureModal";
 
 const Layout = () => {
@@ -79,6 +79,19 @@ const Layout = () => {
             }
           >
             planning
+          </NavLink>
+          <NavLink
+            to="/calendar"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-3 py-2 rounded-md text-sm lowercase transition-colors ${
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+              }`
+            }
+          >
+            <Calendar className="w-4 h-4" />
+            calendar
           </NavLink>
           <NavLink
             to="/clients"
