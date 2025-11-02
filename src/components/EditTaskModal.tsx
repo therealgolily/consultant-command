@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,12 @@ interface Task {
   description: string | null;
   category: string | null;
   priority: string;
+  client_id?: string | null;
+}
+
+interface Client {
+  id: string;
+  name: string;
 }
 
 interface EditTaskModalProps {
@@ -39,8 +45,32 @@ const EditTaskModal = ({ task, open, onOpenChange, onUpdate }: EditTaskModalProp
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
   const [category, setCategory] = useState(task.category || "");
+  const [clientId, setClientId] = useState(task.client_id || "");
+  const [clients, setClients] = useState<Client[]>([]);
   const [isUrgent, setIsUrgent] = useState(task.priority === "urgent");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name")
+        .order("name");
+
+      if (!error) {
+        setClients(data || []);
+      }
+    };
+
+    if (open) {
+      fetchClients();
+      setTitle(task.title);
+      setDescription(task.description || "");
+      setCategory(task.category || "");
+      setClientId(task.client_id || "");
+      setIsUrgent(task.priority === "urgent");
+    }
+  }, [open, task]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +85,7 @@ const EditTaskModal = ({ task, open, onOpenChange, onUpdate }: EditTaskModalProp
           title: title.trim(),
           description: description.trim() || null,
           category: category || null,
+          client_id: clientId || null,
           priority: isUrgent ? "urgent" : "normal",
         })
         .eq("id", task.id);
@@ -103,38 +134,69 @@ const EditTaskModal = ({ task, open, onOpenChange, onUpdate }: EditTaskModalProp
             />
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="edit-category" className="text-sm lowercase">
-                category
-              </Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="edit-category" className="h-10">
-                  <SelectValue placeholder="select..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="client">client</SelectItem>
-                  <SelectItem value="personal">personal</SelectItem>
-                  <SelectItem value="idea">idea</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-end pb-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="edit-urgent"
-                  checked={isUrgent}
-                  onCheckedChange={(checked) => setIsUrgent(checked as boolean)}
-                />
-                <Label
-                  htmlFor="edit-urgent"
-                  className="text-sm lowercase cursor-pointer"
-                >
-                  urgent
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="edit-category" className="text-sm lowercase">
+                  category
                 </Label>
+                <Select value={category} onValueChange={(value) => {
+                  setCategory(value);
+                  if (value !== "client") setClientId("");
+                }}>
+                  <SelectTrigger id="edit-category" className="h-10">
+                    <SelectValue placeholder="select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client">client</SelectItem>
+                    <SelectItem value="personal">personal</SelectItem>
+                    <SelectItem value="idea">idea</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end pb-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-urgent"
+                    checked={isUrgent}
+                    onCheckedChange={(checked) => setIsUrgent(checked as boolean)}
+                  />
+                  <Label
+                    htmlFor="edit-urgent"
+                    className="text-sm lowercase cursor-pointer"
+                  >
+                    urgent
+                  </Label>
+                </div>
               </div>
             </div>
+
+            {category === "client" && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-client" className="text-sm lowercase">
+                  client
+                </Label>
+                {clients.length === 0 ? (
+                  <p className="text-sm text-muted-foreground lowercase">
+                    add clients first
+                  </p>
+                ) : (
+                  <Select value={clientId} onValueChange={setClientId}>
+                    <SelectTrigger id="edit-client" className="h-10">
+                      <SelectValue placeholder="select client..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
           </div>
 
           <Button type="submit" className="w-full lowercase" disabled={isSubmitting}>

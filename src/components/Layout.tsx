@@ -80,9 +80,18 @@ const Layout = () => {
           >
             planning
           </NavLink>
-          <div className="px-3 py-2 text-sm lowercase text-muted-foreground opacity-40 cursor-not-allowed">
+          <NavLink
+            to="/clients"
+            className={({ isActive }) =>
+              `block px-3 py-2 rounded-md text-sm lowercase transition-colors ${
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+              }`
+            }
+          >
             clients
-          </div>
+          </NavLink>
           <div className="px-3 py-2 text-sm lowercase text-muted-foreground opacity-40 cursor-not-allowed">
             money
           </div>
