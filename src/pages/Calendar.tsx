@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, isSameDay, isToday, isPast } from "date-fns";
 import DraggableTaskCard from "@/components/DraggableTaskCard";
 import DroppableDay from "@/components/DroppableDay";
+import TaskBadge from "@/components/TaskBadge";
+import TaskDetailModal from "@/components/TaskDetailModal";
 import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import QuickCaptureModal from "@/components/QuickCaptureModal";
 import { runRecurringTaskEngine } from "@/utils/recurringTaskEngine";
@@ -37,6 +38,7 @@ const Calendar = () => {
   const [inboxExpanded, setInboxExpanded] = useState(true);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
@@ -391,7 +393,7 @@ const Calendar = () => {
                       </div>
 
                       {/* Day Content */}
-                      <div className="space-y-2 min-h-[300px]">
+                      <div className="space-y-1 min-h-[300px]">
                         {dayTasks.length === 0 ? (
                           <div className="text-center py-8">
                             <div className="text-muted-foreground lowercase text-xs mb-2">
@@ -413,14 +415,22 @@ const Calendar = () => {
                             {dayTasks
                               .filter((t) => t.time_block_start)
                               .map((task) => (
-                                <DraggableTaskCard key={task.id} task={task} onUpdate={fetchTasks} />
+                                <TaskBadge
+                                  key={task.id}
+                                  task={task}
+                                  onClick={() => setSelectedTask(task)}
+                                />
                               ))}
                             
                             {/* Tasks without time blocks */}
                             {dayTasks
                               .filter((t) => !t.time_block_start)
                               .map((task) => (
-                                <DraggableTaskCard key={task.id} task={task} onUpdate={fetchTasks} />
+                                <TaskBadge
+                                  key={task.id}
+                                  task={task}
+                                  onClick={() => setSelectedTask(task)}
+                                />
                               ))}
 
                             <Button
@@ -460,6 +470,13 @@ const Calendar = () => {
         open={quickCaptureOpen}
         onOpenChange={setQuickCaptureOpen}
         initialDueDate={selectedDate || undefined}
+      />
+
+      <TaskDetailModal
+        task={selectedTask}
+        open={!!selectedTask}
+        onOpenChange={(open) => !open && setSelectedTask(null)}
+        onUpdate={fetchTasks}
       />
     </DndContext>
   );
