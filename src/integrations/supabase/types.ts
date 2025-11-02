@@ -143,9 +143,12 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           description: string | null
+          google_calendar_event_id: string | null
           id: string
           priority: string | null
           status: string | null
+          time_block_end: string | null
+          time_block_start: string | null
           title: string
           user_id: string
         }
@@ -156,9 +159,12 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           description?: string | null
+          google_calendar_event_id?: string | null
           id?: string
           priority?: string | null
           status?: string | null
+          time_block_end?: string | null
+          time_block_start?: string | null
           title: string
           user_id: string
         }
@@ -169,9 +175,12 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           description?: string | null
+          google_calendar_event_id?: string | null
           id?: string
           priority?: string | null
           status?: string | null
+          time_block_end?: string | null
+          time_block_start?: string | null
           title?: string
           user_id?: string
         }
@@ -184,6 +193,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_integrations: {
+        Row: {
+          created_at: string | null
+          google_access_token: string | null
+          google_email: string | null
+          google_refresh_token: string | null
+          google_token_expiry: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          google_access_token?: string | null
+          google_email?: string | null
+          google_refresh_token?: string | null
+          google_token_expiry?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          google_access_token?: string | null
+          google_email?: string | null
+          google_refresh_token?: string | null
+          google_token_expiry?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
