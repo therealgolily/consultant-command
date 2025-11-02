@@ -121,12 +121,17 @@ function calculateStatus(dueDate: Date, today: Date): string {
 
 export async function runRecurringTaskEngine(): Promise<number> {
   try {
+    console.log("🔄 Starting recurring task engine...");
+    
     // Check if engine should run
     const lastRun = localStorage.getItem(LAST_RUN_KEY);
     const lastRunDate = lastRun ? new Date(lastRun) : null;
     
+    console.log("Last run:", lastRunDate);
+    
     // Only run if last run was yesterday or earlier, or never run
     if (lastRunDate && isToday(lastRunDate)) {
+      console.log("⏭️ Engine already ran today, skipping");
       return 0;
     }
 
@@ -137,7 +142,13 @@ export async function runRecurringTaskEngine(): Promise<number> {
       .eq("is_recurring", true)
       .eq("is_paused", false);
 
-    if (error) throw error;
+    if (error) {
+      console.error("❌ Error fetching recurring tasks:", error);
+      throw error;
+    }
+    
+    console.log(`📋 Found ${recurringTasks?.length || 0} active recurring tasks`);
+    
     if (!recurringTasks || recurringTasks.length === 0) {
       localStorage.setItem(LAST_RUN_KEY, new Date().toISOString());
       return 0;
@@ -145,44 +156,60 @@ export async function runRecurringTaskEngine(): Promise<number> {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = format(today, "yyyy-MM-dd");
     let instancesCreated = 0;
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return 0;
+    if (!user) {
+      console.error("❌ No user found");
+      return 0;
+    }
 
     for (const task of recurringTasks) {
+      console.log(`\n🔍 Processing: "${task.title}" (${task.recurrence_rule})`);
+      
       // Calculate the next due date
       const dueDate = calculateNextDueDate(task.recurrence_rule, today);
       
       if (!dueDate) {
-        console.warn(`Could not calculate due date for task ${task.id}`);
+        console.warn(`⚠️ Could not calculate due date for task ${task.id}`);
         continue;
       }
 
+      console.log(`📅 Calculated due date: ${format(dueDate, "yyyy-MM-dd")}`);
+
       // Only create if due date is today or in the near future (within 14 days)
       const daysUntil = differenceInDays(dueDate, today);
+      console.log(`⏰ Days until due: ${daysUntil}`);
+      
       if (daysUntil > 14) {
-        continue; // Don't create instances too far in the future
+        console.log(`⏭️ Skipping - due date too far in future`);
+        continue;
       }
 
       // Check if instance already exists for this due date
       const dueDateStr = format(dueDate, "yyyy-MM-dd");
-      const { data: existingInstances } = await supabase
+      const { data: existingInstances, error: checkError } = await supabase
         .from("tasks")
         .select("id")
         .eq("parent_task_id", task.id)
         .eq("due_date", dueDateStr);
 
+      if (checkError) {
+        console.error("❌ Error checking existing instances:", checkError);
+        continue;
+      }
+
       if (existingInstances && existingInstances.length > 0) {
-        continue; // Instance already exists for this date
+        console.log(`✓ Instance already exists for ${dueDateStr}`);
+        continue;
       }
 
       // Calculate status based on due date
       const status = calculateStatus(dueDate, today);
+      console.log(`📊 Calculated status: ${status}`);
 
       // Create new instance
-      const { error: insertError } = await supabase.from("tasks").insert({
+      const instanceData = {
         user_id: user.id,
         title: task.title,
         description: task.description,
@@ -195,20 +222,30 @@ export async function runRecurringTaskEngine(): Promise<number> {
         is_recurring: false,
         time_block_start: task.time_block_start,
         time_block_end: task.time_block_end,
-      });
+      };
 
-      if (!insertError) {
-        instancesCreated++;
+      console.log("📝 Creating instance:", instanceData);
+
+      const { data: newInstance, error: insertError } = await supabase
+        .from("tasks")
+        .insert(instanceData)
+        .select();
+
+      if (insertError) {
+        console.error("❌ Error creating instance:", insertError);
       } else {
-        console.error("Error creating instance:", insertError);
+        console.log("✅ Instance created successfully:", newInstance);
+        instancesCreated++;
       }
     }
 
     // Update last run timestamp
     localStorage.setItem(LAST_RUN_KEY, new Date().toISOString());
+    console.log(`\n🎉 Engine complete. Created ${instancesCreated} instances`);
+    
     return instancesCreated;
   } catch (error) {
-    console.error("Recurring task engine error:", error);
+    console.error("💥 Recurring task engine error:", error);
     return 0;
   }
 }

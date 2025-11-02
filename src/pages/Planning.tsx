@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import RecurringTaskModal from "@/components/recurring/RecurringTaskModal";
 import RecurringTasksList from "@/components/recurring/RecurringTasksList";
 import QuickCaptureModal from "@/components/QuickCaptureModal";
+import { runRecurringTaskEngine } from "@/utils/recurringTaskEngine";
 
 interface Task {
   id: string;
@@ -178,14 +179,32 @@ const Planning = () => {
                 {recurringTasks.length}
               </Badge>
             </CollapsibleTrigger>
-            <Button
-              onClick={() => setShowRecurringModal(true)}
-              size="sm"
-              className="lowercase bg-category-idea hover:bg-category-idea/90"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              set up recurring task
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={async () => {
+                  const instancesCreated = await runRecurringTaskEngine();
+                  if (instancesCreated > 0) {
+                    toast.success(`created ${instancesCreated} recurring ${instancesCreated === 1 ? "task" : "tasks"}`);
+                    fetchTasks();
+                  } else {
+                    toast.info("no new instances needed");
+                  }
+                }}
+                size="sm"
+                variant="outline"
+                className="lowercase"
+              >
+                generate instances
+              </Button>
+              <Button
+                onClick={() => setShowRecurringModal(true)}
+                size="sm"
+                className="lowercase bg-category-idea hover:bg-category-idea/90"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                set up recurring task
+              </Button>
+            </div>
           </div>
 
           <CollapsibleContent>
