@@ -131,7 +131,12 @@ const RecurringTaskModal = ({
         toast.success("recurring task created");
       }
 
+      // Trigger parent refresh and wait a moment for realtime to propagate
       onSuccess();
+      
+      // Small delay to ensure realtime updates propagate before closing
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message);
