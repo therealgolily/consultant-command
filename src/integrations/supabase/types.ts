@@ -145,7 +145,11 @@ export type Database = {
           description: string | null
           google_calendar_event_id: string | null
           id: string
+          is_paused: boolean | null
+          is_recurring: boolean | null
+          parent_task_id: string | null
           priority: string | null
+          recurrence_rule: string | null
           status: string | null
           time_block_end: string | null
           time_block_start: string | null
@@ -161,7 +165,11 @@ export type Database = {
           description?: string | null
           google_calendar_event_id?: string | null
           id?: string
+          is_paused?: boolean | null
+          is_recurring?: boolean | null
+          parent_task_id?: string | null
           priority?: string | null
+          recurrence_rule?: string | null
           status?: string | null
           time_block_end?: string | null
           time_block_start?: string | null
@@ -177,7 +185,11 @@ export type Database = {
           description?: string | null
           google_calendar_event_id?: string | null
           id?: string
+          is_paused?: boolean | null
+          is_recurring?: boolean | null
+          parent_task_id?: string | null
           priority?: string | null
+          recurrence_rule?: string | null
           status?: string | null
           time_block_end?: string | null
           time_block_start?: string | null
@@ -190,6 +202,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]

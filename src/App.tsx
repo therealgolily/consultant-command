@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Planning from "./pages/Planning";
@@ -10,11 +11,25 @@ import Clients from "./pages/Clients";
 import Money from "./pages/Money";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { runRecurringTaskEngine } from "./utils/recurringTaskEngine";
+import { toast } from "sonner";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const App = () => {
+  useEffect(() => {
+    // Run recurring task engine on app load
+    const runEngine = async () => {
+      const instancesCreated = await runRecurringTaskEngine();
+      if (instancesCreated > 0) {
+        toast.success(`created ${instancesCreated} recurring ${instancesCreated === 1 ? "task" : "tasks"} for today`);
+      }
+    };
+    runEngine();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -32,7 +47,8 @@ const App = () => (
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
-);
+    </QueryClientProvider>
+  );
+};
 
 export default App;

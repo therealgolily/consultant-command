@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Pencil, Trash2, Clock, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -22,7 +23,11 @@ interface Task {
   description: string | null;
   category: string | null;
   priority: string;
+  status: string;
   created_at: string;
+  parent_task_id?: string | null;
+  time_block_start?: string | null;
+  time_block_end?: string | null;
 }
 
 interface TaskCardProps {
@@ -90,7 +95,26 @@ const TaskCard = ({ task, onUpdate }: TaskCardProps) => {
                 {task.description}
               </p>
             )}
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {task.parent_task_id && (
+                <Badge
+                  variant="outline"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs lowercase border bg-category-idea/10 text-category-idea border-category-idea/20"
+                >
+                  <Repeat className="h-3 w-3" />
+                  recurring
+                </Badge>
+              )}
+              {task.time_block_start && task.time_block_end && (
+                <Badge
+                  variant="outline"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs lowercase"
+                >
+                  <Clock className="h-3 w-3" />
+                  {format(new Date(task.time_block_start), "h:mm a")} -{" "}
+                  {format(new Date(task.time_block_end), "h:mm a")}
+                </Badge>
+              )}
               {task.category && (
                 <span
                   className={`inline-flex items-center px-2 py-0.5 rounded text-xs lowercase border ${getCategoryColor(

@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 interface Task {
@@ -26,7 +28,10 @@ interface Task {
   description: string | null;
   category: string | null;
   priority: string;
+  status: string;
   client_id?: string | null;
+  time_block_start?: string | null;
+  time_block_end?: string | null;
 }
 
 interface Client {
@@ -49,6 +54,9 @@ const EditTaskModal = ({ task, open, onOpenChange, onUpdate }: EditTaskModalProp
   const [clients, setClients] = useState<Client[]>([]);
   const [isUrgent, setIsUrgent] = useState(task.priority === "urgent");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showTimeBlocks, setShowTimeBlocks] = useState(false);
+  const [timeBlockStart, setTimeBlockStart] = useState("");
+  const [timeBlockEnd, setTimeBlockEnd] = useState("");
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -69,6 +77,9 @@ const EditTaskModal = ({ task, open, onOpenChange, onUpdate }: EditTaskModalProp
       setCategory(task.category || "");
       setClientId(task.client_id || "");
       setIsUrgent(task.priority === "urgent");
+      setTimeBlockStart(task.time_block_start ? task.time_block_start.slice(0, 16) : "");
+      setTimeBlockEnd(task.time_block_end ? task.time_block_end.slice(0, 16) : "");
+      setShowTimeBlocks(!!(task.time_block_start || task.time_block_end));
     }
   }, [open, task]);
 
@@ -87,6 +98,8 @@ const EditTaskModal = ({ task, open, onOpenChange, onUpdate }: EditTaskModalProp
           category: category || null,
           client_id: clientId || null,
           priority: isUrgent ? "urgent" : "normal",
+          time_block_start: timeBlockStart || null,
+          time_block_end: timeBlockEnd || null,
         })
         .eq("id", task.id);
 
@@ -198,6 +211,41 @@ const EditTaskModal = ({ task, open, onOpenChange, onUpdate }: EditTaskModalProp
               </div>
             )}
           </div>
+
+          {task.status && !["inbox", "backburner", "done"].includes(task.status) && (
+            <Collapsible open={showTimeBlocks} onOpenChange={setShowTimeBlocks}>
+              <CollapsibleTrigger className="flex items-center gap-2 text-sm lowercase">
+                <ChevronDown className={`h-4 w-4 transition-transform ${showTimeBlocks ? "" : "-rotate-90"}`} />
+                schedule time (optional)
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start_time" className="lowercase">
+                      start time
+                    </Label>
+                    <Input
+                      id="start_time"
+                      type="datetime-local"
+                      value={timeBlockStart}
+                      onChange={(e) => setTimeBlockStart(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end_time" className="lowercase">
+                      end time
+                    </Label>
+                    <Input
+                      id="end_time"
+                      type="datetime-local"
+                      value={timeBlockEnd}
+                      onChange={(e) => setTimeBlockEnd(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
 
           <Button type="submit" className="w-full lowercase" disabled={isSubmitting}>
             {isSubmitting ? "saving..." : "save changes"}

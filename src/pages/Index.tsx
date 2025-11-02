@@ -15,6 +15,9 @@ interface Task {
   priority: string;
   status: string;
   created_at: string;
+  parent_task_id?: string | null;
+  time_block_start?: string | null;
+  time_block_end?: string | null;
 }
 
 const Index = () => {
@@ -80,7 +83,18 @@ const Index = () => {
       return statusOrder[a.status as keyof typeof statusOrder] - statusOrder[b.status as keyof typeof statusOrder];
     });
   
-  const todayTasks = tasks.filter((t) => t.status === "today");
+  const todayTasks = tasks
+    .filter((t) => t.status === "today")
+    .sort((a, b) => {
+      // Sort by time block first, then by created_at
+      if (a.time_block_start && b.time_block_start) {
+        return new Date(a.time_block_start).getTime() - new Date(b.time_block_start).getTime();
+      }
+      if (a.time_block_start) return -1;
+      if (b.time_block_start) return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    
   const tomorrowTasks = tasks.filter((t) => t.status === "tomorrow");
   const inboxCount = tasks.filter((t) => t.status === "inbox").length;
 

@@ -4,7 +4,12 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCorners }
 import DraggableTaskCard from "@/components/DraggableTaskCard";
 import Bucket from "@/components/Bucket";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Plus, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
+import RecurringTaskModal from "@/components/recurring/RecurringTaskModal";
+import RecurringTasksList from "@/components/recurring/RecurringTasksList";
 
 interface Task {
   id: string;
@@ -26,8 +31,11 @@ const BUCKETS = [
 
 const Planning = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [recurringTasks, setRecurringTasks] = useState<any[]>([]);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [recurringExpanded, setRecurringExpanded] = useState(true);
 
   const fetchTasks = async () => {
     try {
@@ -35,6 +43,7 @@ const Planning = () => {
         .from("tasks")
         .select("*")
         .in("status", ["inbox", "today", "tomorrow", "this_week", "next_week", "backburner"])
+        .eq("is_recurring", false)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -46,8 +55,27 @@ const Planning = () => {
     }
   };
 
+  const fetchRecurringTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select(`
+          *,
+          clients (name)
+        `)
+        .eq("is_recurring", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setRecurringTasks(data || []);
+    } catch (error) {
+      console.error("Error fetching recurring tasks:", error);
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
+    fetchRecurringTasks();
 
     const channel = supabase
       .channel("planning-tasks-changes")
@@ -60,6 +88,7 @@ const Planning = () => {
         },
         () => {
           fetchTasks();
+          fetchRecurringTasks();
         }
       )
       .subscribe();
@@ -127,6 +156,47 @@ const Planning = () => {
       onDragEnd={handleDragEnd}
     >
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Recurring Tasks Section */}
+        <Collapsible
+          open={recurringExpanded}
+          onOpenChange={setRecurringExpanded}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <CollapsibleTrigger className="flex items-center gap-2">
+              <ChevronDown
+                className={`h-5 w-5 transition-transform ${
+                  recurringExpanded ? "" : "-rotate-90"
+                }`}
+              />
+              <h2 className="text-2xl font-bold lowercase text-category-idea">
+                recurring tasks
+              </h2>
+              <Badge variant="secondary" className="lowercase">
+                {recurringTasks.length}
+              </Badge>
+            </CollapsibleTrigger>
+            <Button
+              onClick={() => setShowRecurringModal(true)}
+              size="sm"
+              className="lowercase bg-category-idea hover:bg-category-idea/90"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              set up recurring task
+            </Button>
+          </div>
+
+          <CollapsibleContent>
+            {recurringTasks.length === 0 ? (
+              <div className="text-center text-muted-foreground lowercase py-8 border rounded-lg">
+                no recurring tasks yet. automate repetitive work by setting one up.
+              </div>
+            ) : (
+              <RecurringTasksList tasks={recurringTasks} onUpdate={fetchRecurringTasks} />
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+
         <div className="grid grid-cols-5 gap-6">
           {/* Left Column - Inbox */}
           <div className="col-span-2">
@@ -176,6 +246,12 @@ const Planning = () => {
           </div>
         ) : null}
       </DragOverlay>
+
+      <RecurringTaskModal
+        open={showRecurringModal}
+        onOpenChange={setShowRecurringModal}
+        onSuccess={fetchRecurringTasks}
+      />
     </DndContext>
   );
 };
