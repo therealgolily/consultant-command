@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import Layout from "./components/Layout";
-import Index from "./pages/Index";
 import Planning from "./pages/Planning";
 import Calendar from "./pages/Calendar";
 import Clients from "./pages/Clients";
@@ -38,8 +37,7 @@ const App = () => {
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route element={<Layout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/planning" element={<Planning />} />
+            <Route path="/" element={<Planning />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/clients" element={<Clients />} />
             <Route path="/money" element={<Money />} />

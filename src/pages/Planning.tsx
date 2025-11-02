@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "sonner";
 import RecurringTaskModal from "@/components/recurring/RecurringTaskModal";
 import RecurringTasksList from "@/components/recurring/RecurringTasksList";
+import QuickCaptureModal from "@/components/QuickCaptureModal";
 
 interface Task {
   id: string;
@@ -36,6 +37,7 @@ const Planning = () => {
   const [loading, setLoading] = useState(true);
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [recurringExpanded, setRecurringExpanded] = useState(true);
+  const [showQuickCapture, setShowQuickCapture] = useState(false);
 
   const fetchTasks = async () => {
     try {
@@ -201,11 +203,21 @@ const Planning = () => {
           {/* Left Column - Inbox */}
           <div className="col-span-2">
             <div className="sticky top-0 bg-background pb-4 pt-2 border-b border-border mb-6 z-10">
-              <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold lowercase">inbox</h2>
-                <Badge variant="secondary" className="lowercase">
-                  {inboxTasks.length}
-                </Badge>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-2xl font-bold lowercase">inbox</h2>
+                  <Badge variant="secondary" className="lowercase">
+                    {inboxTasks.length}
+                  </Badge>
+                </div>
+                <Button
+                  onClick={() => setShowQuickCapture(true)}
+                  size="sm"
+                  className="lowercase"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  new task
+                </Button>
               </div>
             </div>
 
@@ -251,6 +263,11 @@ const Planning = () => {
         open={showRecurringModal}
         onOpenChange={setShowRecurringModal}
         onSuccess={fetchRecurringTasks}
+      />
+
+      <QuickCaptureModal
+        open={showQuickCapture}
+        onOpenChange={setShowQuickCapture}
       />
     </DndContext>
   );
