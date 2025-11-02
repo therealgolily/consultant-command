@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, isSameDay, isToday, isPast } from "date-fns";
 import DraggableTaskCard from "@/components/DraggableTaskCard";
+import DroppableDay from "@/components/DroppableDay";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -121,13 +122,22 @@ const Calendar = () => {
       newStatus = "next_week";
     }
 
-    // Optimistic update
+    // Optimistic update - find task and update it
     const updatedTask = [...tasks, ...inboxTasks].find(t => t.id === taskId);
-    if (updatedTask) {
-      const updated = { ...updatedTask, due_date: format(targetDate, "yyyy-MM-dd"), status: newStatus };
-      setTasks(prev => [...prev.filter(t => t.id !== taskId), updated]);
-      setInboxTasks(prev => prev.filter(t => t.id !== taskId));
-    }
+    if (!updatedTask) return;
+
+    const updated = { 
+      ...updatedTask, 
+      due_date: format(targetDate, "yyyy-MM-dd"), 
+      status: newStatus 
+    };
+
+    // Update state immediately for visual feedback
+    setTasks(prev => {
+      const filtered = prev.filter(t => t.id !== taskId);
+      return [...filtered, updated];
+    });
+    setInboxTasks(prev => prev.filter(t => t.id !== taskId));
 
     try {
       const { error } = await supabase
@@ -139,9 +149,10 @@ const Calendar = () => {
         .eq("id", taskId);
 
       if (error) throw error;
-      toast.success("task scheduled");
+      
+      toast.success(`task scheduled for ${format(targetDate, "MMM d")}`);
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(`failed to schedule: ${error.message}`);
       fetchTasks(); // Revert on error
     }
   };
@@ -256,15 +267,11 @@ const Calendar = () => {
                   const isPastDay = isPast(day) && !isToday(day);
 
                   return (
-                    <div
+                    <DroppableDay
                       key={day.toISOString()}
-                      className={`min-h-[400px] border rounded-lg p-3 ${
-                        isCurrentDay
-                          ? "border-primary bg-primary/5"
-                          : isPastDay
-                          ? "border-border bg-muted/30"
-                          : "border-border bg-card"
-                      }`}
+                      id={day.toISOString()}
+                      isToday={isCurrentDay}
+                      isPast={isPastDay}
                     >
                       {/* Day Header */}
                       <div className="mb-3 pb-2 border-b border-border">
@@ -276,12 +283,8 @@ const Calendar = () => {
                         </div>
                       </div>
 
-                      {/* Droppable Area */}
-                      <div
-                        data-day={day.toISOString()}
-                        id={day.toISOString()}
-                        className="space-y-2 min-h-[300px]"
-                      >
+                      {/* Day Content */}
+                      <div className="space-y-2 min-h-[300px]">
                         {dayTasks.length === 0 ? (
                           <div className="text-center py-8">
                             <div className="text-muted-foreground lowercase text-xs mb-2">
@@ -363,7 +366,7 @@ const Calendar = () => {
                           </>
                         )}
                       </div>
-                    </div>
+                    </DroppableDay>
                   );
                 })}
               </div>
