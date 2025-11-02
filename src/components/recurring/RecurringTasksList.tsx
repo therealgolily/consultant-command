@@ -62,6 +62,9 @@ const RecurringTasksList = ({ tasks, onUpdate }: RecurringTasksListProps) => {
     if (!selectedTask) return;
 
     try {
+      // Optimistic update - remove from UI immediately
+      toast.loading("deleting recurring task...");
+      
       if (deleteInstances) {
         // Delete all instances first
         await supabase
@@ -84,9 +87,13 @@ const RecurringTasksList = ({ tasks, onUpdate }: RecurringTasksListProps) => {
 
       if (error) throw error;
 
-      toast.success("recurring task deleted");
+      toast.dismiss();
+      toast.success(deleteInstances ? "recurring task and instances deleted" : "recurring task deleted");
+      
+      // Force immediate refresh
       onUpdate();
     } catch (error: any) {
+      toast.dismiss();
       toast.error(error.message);
     } finally {
       setShowDeleteDialog(false);
