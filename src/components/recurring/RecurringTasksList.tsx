@@ -95,15 +95,6 @@ const RecurringTasksList = ({ tasks, onUpdate }: RecurringTasksListProps) => {
     }
   };
 
-  const getBucketBadge = (status: string) => {
-    const labels: Record<string, string> = {
-      today: "today",
-      tomorrow: "tomorrow",
-      this_week: "this week",
-    };
-    return labels[status] || status;
-  };
-
   return (
     <>
       <div className="space-y-3">
@@ -130,9 +121,6 @@ const RecurringTasksList = ({ tasks, onUpdate }: RecurringTasksListProps) => {
                   {getRecurrenceLabel(task.recurrence_rule)}
                 </p>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="lowercase">
-                    → {getBucketBadge(task.status)}
-                  </Badge>
                   {task.clients && (
                     <Badge variant="secondary" className="lowercase">
                       {task.clients.name}

@@ -50,7 +50,6 @@ const RecurringTaskModal = ({
     category: "",
     priority: "normal",
     recurrence_rule: "",
-    bucket: "today",
     time_block_start: "",
     time_block_end: "",
   });
@@ -75,7 +74,6 @@ const RecurringTaskModal = ({
         category: task.category || "",
         priority: task.priority,
         recurrence_rule: task.recurrence_rule,
-        bucket: task.status,
         time_block_start: task.time_block_start ? task.time_block_start.slice(0, 16) : "",
         time_block_end: task.time_block_end ? task.time_block_end.slice(0, 16) : "",
       });
@@ -88,7 +86,6 @@ const RecurringTaskModal = ({
         category: "",
         priority: "normal",
         recurrence_rule: "",
-        bucket: "today",
         time_block_start: "",
         time_block_end: "",
       });
@@ -116,7 +113,6 @@ const RecurringTaskModal = ({
         category: formData.category || null,
         priority: formData.priority,
         recurrence_rule: formData.recurrence_rule,
-        status: formData.bucket,
         is_recurring: true,
         time_block_start: formData.time_block_start || null,
         time_block_end: formData.time_block_end || null,
@@ -227,50 +223,29 @@ const RecurringTaskModal = ({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="lowercase">priority</Label>
-              <div className="flex gap-4 mt-2">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="priority"
-                    value="normal"
-                    checked={formData.priority === "normal"}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                  />
-                  <span className="text-sm lowercase">normal</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="priority"
-                    value="urgent"
-                    checked={formData.priority === "urgent"}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                  />
-                  <span className="text-sm lowercase">urgent</span>
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="bucket" className="lowercase">
-                create instances in *
-              </Label>
-              <Select
-                value={formData.bucket}
-                onValueChange={(value) => setFormData({ ...formData, bucket: value })}
-              >
-                <SelectTrigger id="bucket">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">today</SelectItem>
-                  <SelectItem value="tomorrow">tomorrow</SelectItem>
-                  <SelectItem value="this_week">this week</SelectItem>
-                </SelectContent>
-              </Select>
+          <div>
+            <Label className="lowercase">priority</Label>
+            <div className="flex gap-4 mt-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="priority"
+                  value="normal"
+                  checked={formData.priority === "normal"}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                />
+                <span className="text-sm lowercase">normal</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="priority"
+                  value="urgent"
+                  checked={formData.priority === "urgent"}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                />
+                <span className="text-sm lowercase">urgent</span>
+              </label>
             </div>
           </div>
 

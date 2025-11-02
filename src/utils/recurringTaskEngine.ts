@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { format, isToday, getDay, getDate, getDaysInMonth } from "date-fns";
+import { format, isToday, getDay, getDate, getDaysInMonth, addDays, addMonths, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
 
 export interface RecurringTask {
   id: string;
@@ -8,7 +8,6 @@ export interface RecurringTask {
   client_id: string | null;
   category: string | null;
   priority: string;
-  status: string; // The bucket where instances should be created
   recurrence_rule: string;
   is_paused: boolean;
   time_block_start: string | null;
@@ -16,6 +15,109 @@ export interface RecurringTask {
 }
 
 const LAST_RUN_KEY = "recurring_task_engine_last_run";
+
+/**
+ * Calculate the next due date for a recurring task based on its recurrence rule
+ */
+function calculateNextDueDate(recurrenceRule: string, today: Date): Date | null {
+  if (!recurrenceRule) return null;
+
+  const [frequency, ...params] = recurrenceRule.split("-");
+
+  switch (frequency) {
+    case "daily":
+      return today;
+
+    case "weekly": {
+      const dayName = params[0]?.toLowerCase();
+      const dayMap: Record<string, number> = {
+        sunday: 0,
+        monday: 1,
+        tuesday: 2,
+        wednesday: 3,
+        thursday: 4,
+        friday: 5,
+        saturday: 6,
+      };
+      const targetDay = dayMap[dayName];
+      const todayDay = getDay(today);
+      
+      // If today is the target day, return today
+      if (todayDay === targetDay) {
+        return today;
+      }
+      
+      // Calculate days until next occurrence
+      let daysUntil = targetDay - todayDay;
+      if (daysUntil < 0) {
+        daysUntil += 7;
+      }
+      
+      return addDays(today, daysUntil);
+    }
+
+    case "monthly": {
+      const dayOfMonth = params[0];
+      const currentDate = getDate(today);
+      
+      if (dayOfMonth === "last") {
+        // Last day of month
+        const lastDayThisMonth = getDaysInMonth(today);
+        
+        if (currentDate <= lastDayThisMonth) {
+          // If we haven't passed it this month, use this month
+          const lastDay = endOfMonth(today);
+          return lastDay;
+        } else {
+          // Otherwise, use next month
+          const nextMonth = addMonths(today, 1);
+          return endOfMonth(nextMonth);
+        }
+      } else {
+        const targetDate = parseInt(dayOfMonth, 10);
+        
+        // Check if target date exists in current month
+        const daysInCurrentMonth = getDaysInMonth(today);
+        
+        if (targetDate <= daysInCurrentMonth && currentDate <= targetDate) {
+          // If we haven't passed it this month, use this month
+          const thisMonth = startOfMonth(today);
+          return new Date(thisMonth.getFullYear(), thisMonth.getMonth(), targetDate);
+        } else {
+          // Otherwise, use next month
+          const nextMonth = addMonths(startOfMonth(today), 1);
+          const daysInNextMonth = getDaysInMonth(nextMonth);
+          
+          // If next month doesn't have this date, use last day of next month
+          const useDate = Math.min(targetDate, daysInNextMonth);
+          return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), useDate);
+        }
+      }
+    }
+
+    default:
+      return null;
+  }
+}
+
+/**
+ * Calculate the appropriate status based on due date relative to today
+ */
+function calculateStatus(dueDate: Date, today: Date): string {
+  const daysUntil = differenceInDays(dueDate, today);
+  
+  if (daysUntil === 0) {
+    return "today";
+  } else if (daysUntil === 1) {
+    return "tomorrow";
+  } else if (daysUntil >= 2 && daysUntil <= 7) {
+    return "this_week";
+  } else if (daysUntil >= 8 && daysUntil <= 14) {
+    return "next_week";
+  } else {
+    return "backburner";
+  }
+}
 
 export async function runRecurringTaskEngine(): Promise<number> {
   try {
@@ -42,6 +144,7 @@ export async function runRecurringTaskEngine(): Promise<number> {
     }
 
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const todayStr = format(today, "yyyy-MM-dd");
     let instancesCreated = 0;
 
@@ -49,22 +152,34 @@ export async function runRecurringTaskEngine(): Promise<number> {
     if (!user) return 0;
 
     for (const task of recurringTasks) {
-      // Check if pattern matches today
-      if (!shouldCreateInstance(task.recurrence_rule, today)) {
+      // Calculate the next due date
+      const dueDate = calculateNextDueDate(task.recurrence_rule, today);
+      
+      if (!dueDate) {
+        console.warn(`Could not calculate due date for task ${task.id}`);
         continue;
       }
 
-      // Check if instance already exists for today
+      // Only create if due date is today or in the near future (within 14 days)
+      const daysUntil = differenceInDays(dueDate, today);
+      if (daysUntil > 14) {
+        continue; // Don't create instances too far in the future
+      }
+
+      // Check if instance already exists for this due date
+      const dueDateStr = format(dueDate, "yyyy-MM-dd");
       const { data: existingInstances } = await supabase
         .from("tasks")
         .select("id")
         .eq("parent_task_id", task.id)
-        .gte("created_at", `${todayStr}T00:00:00`)
-        .lte("created_at", `${todayStr}T23:59:59`);
+        .eq("due_date", dueDateStr);
 
       if (existingInstances && existingInstances.length > 0) {
-        continue; // Instance already exists
+        continue; // Instance already exists for this date
       }
+
+      // Calculate status based on due date
+      const status = calculateStatus(dueDate, today);
 
       // Create new instance
       const { error: insertError } = await supabase.from("tasks").insert({
@@ -74,7 +189,8 @@ export async function runRecurringTaskEngine(): Promise<number> {
         client_id: task.client_id,
         category: task.category,
         priority: task.priority,
-        status: task.status, // Use the bucket from parent
+        status: status,
+        due_date: dueDateStr,
         parent_task_id: task.id,
         is_recurring: false,
         time_block_start: task.time_block_start,
@@ -83,6 +199,8 @@ export async function runRecurringTaskEngine(): Promise<number> {
 
       if (!insertError) {
         instancesCreated++;
+      } else {
+        console.error("Error creating instance:", insertError);
       }
     }
 
@@ -92,45 +210,6 @@ export async function runRecurringTaskEngine(): Promise<number> {
   } catch (error) {
     console.error("Recurring task engine error:", error);
     return 0;
-  }
-}
-
-function shouldCreateInstance(recurrenceRule: string, date: Date): boolean {
-  if (!recurrenceRule) return false;
-
-  const [frequency, ...params] = recurrenceRule.split("-");
-
-  switch (frequency) {
-    case "daily":
-      return true;
-
-    case "weekly": {
-      const dayName = params[0]?.toLowerCase();
-      const dayMap: Record<string, number> = {
-        sunday: 0,
-        monday: 1,
-        tuesday: 2,
-        wednesday: 3,
-        thursday: 4,
-        friday: 5,
-        saturday: 6,
-      };
-      const targetDay = dayMap[dayName];
-      return getDay(date) === targetDay;
-    }
-
-    case "monthly": {
-      const dayOfMonth = params[0];
-      if (dayOfMonth === "last") {
-        const daysInMonth = getDaysInMonth(date);
-        return getDate(date) === daysInMonth;
-      }
-      const targetDate = parseInt(dayOfMonth, 10);
-      return getDate(date) === targetDate;
-    }
-
-    default:
-      return false;
   }
 }
 
