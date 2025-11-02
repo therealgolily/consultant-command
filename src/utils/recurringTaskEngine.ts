@@ -15,6 +15,8 @@ export interface RecurringTask {
 }
 
 const LAST_RUN_KEY = "recurring_task_engine_last_run";
+const ENGINE_LOCK_KEY = "recurring_task_engine_lock";
+const LOCK_DURATION = 3000; // 3 seconds
 
 /**
  * Calculate the next due date for a recurring task based on its recurrence rule
@@ -123,14 +125,23 @@ export async function runRecurringTaskEngine(): Promise<number> {
   try {
     console.log("🔄 Starting recurring task engine...");
     
-    // Check if engine should run
+    // Check if engine is already running (prevent simultaneous runs from multiple pages)
+    const lock = localStorage.getItem(ENGINE_LOCK_KEY);
+    const lockTime = lock ? parseInt(lock, 10) : 0;
+    const now = Date.now();
+    
+    if (lockTime && (now - lockTime) < LOCK_DURATION) {
+      console.log("⏭️ Engine already running, skipping to prevent duplicates");
+      return 0;
+    }
+    
+    // Set lock
+    localStorage.setItem(ENGINE_LOCK_KEY, now.toString());
+    console.log("🔒 Engine lock acquired");
+    
     const lastRun = localStorage.getItem(LAST_RUN_KEY);
     const lastRunDate = lastRun ? new Date(lastRun) : null;
-    
     console.log("Last run:", lastRunDate);
-    
-    // Always run; duplicate prevention handled per-task by checking existing instances
-    console.log("🔄 Running engine check...");
 
     // Fetch all active recurring tasks
     const { data: recurringTasks, error } = await supabase
@@ -236,14 +247,21 @@ export async function runRecurringTaskEngine(): Promise<number> {
       }
     }
 
-    // Update last run timestamp
+    // Update last run timestamp and release lock
     localStorage.setItem(LAST_RUN_KEY, new Date().toISOString());
+    localStorage.removeItem(ENGINE_LOCK_KEY);
     console.log(`\n🎉 Engine complete. Created ${instancesCreated} instances`);
+    console.log("🔓 Engine lock released");
     
     return instancesCreated;
   } catch (error) {
     console.error("💥 Recurring task engine error:", error);
+    // Release lock on error
+    localStorage.removeItem(ENGINE_LOCK_KEY);
     return 0;
+  } finally {
+    // Ensure lock is always released
+    localStorage.removeItem(ENGINE_LOCK_KEY);
   }
 }
 
