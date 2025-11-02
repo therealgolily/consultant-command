@@ -99,9 +99,56 @@ const Calendar = () => {
     if (!over) return;
 
     const taskId = active.id as string;
-    const dateString = over.id as string;
+    const dropTargetId = over.id as string;
 
-    console.log("Drop event:", { taskId, dateString, overId: over.id });
+    console.log("Drop event:", { taskId, dropTargetId });
+
+    // Find the task being dropped
+    const sourceTask = [...tasks, ...inboxTasks].find(t => t.id === taskId);
+    if (!sourceTask) {
+      console.error("Task not found:", taskId);
+      toast.error("task not found");
+      return;
+    }
+
+    console.log("Source task:", sourceTask);
+
+    // Handle drop to inbox - unschedule task
+    if (dropTargetId === "inbox") {
+      console.log("Dropping to inbox - unscheduling task");
+
+      // Optimistic update
+      const updated = { 
+        ...sourceTask, 
+        due_date: null, 
+        status: "inbox" 
+      };
+
+      setInboxTasks(prev => [...prev, updated]);
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+
+      try {
+        const { error } = await supabase
+          .from("tasks")
+          .update({ 
+            due_date: null,
+            status: "inbox"
+          })
+          .eq("id", taskId);
+
+        if (error) throw error;
+        
+        toast.success("task moved to inbox");
+      } catch (error: any) {
+        console.error("Failed to unschedule task:", error);
+        toast.error(`failed to unschedule: ${error.message}`);
+        fetchTasks(); // Revert on error
+      }
+      return;
+    }
+
+    // Handle drop to calendar day
+    const dateString = dropTargetId;
 
     // Parse the date from the droppable id (it's an ISO string)
     let targetDate: Date;
@@ -141,16 +188,6 @@ const Calendar = () => {
     }
 
     console.log("Calculated status:", newStatus, "for date:", targetDate);
-
-    // Find the task being dropped
-    const sourceTask = [...tasks, ...inboxTasks].find(t => t.id === taskId);
-    if (!sourceTask) {
-      console.error("Task not found:", taskId);
-      toast.error("task not found");
-      return;
-    }
-
-    console.log("Source task:", sourceTask);
 
     // Format date for database (YYYY-MM-DD)
     const formattedDate = format(targetDate, "yyyy-MM-dd");
@@ -244,23 +281,32 @@ const Calendar = () => {
         {/* Inbox Sidebar */}
         <div className={`border-r border-border bg-sidebar transition-all duration-300 ${inboxExpanded ? "w-72" : "w-0"}`}>
           {inboxExpanded && (
-            <div className="p-4 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold lowercase">inbox</h3>
-                <Badge variant="secondary" className="lowercase">{inboxTasks.length}</Badge>
+            <DroppableDay
+              id="inbox"
+              isToday={false}
+              isPast={false}
+            >
+              <div className="p-4 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold lowercase">inbox</h3>
+                  <Badge variant="secondary" className="lowercase">{inboxTasks.length}</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground mb-2 lowercase">
+                  drag tasks here to unschedule
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2">
+                  {inboxTasks.length === 0 ? (
+                    <div className="text-center text-muted-foreground lowercase text-sm py-8">
+                      inbox empty
+                    </div>
+                  ) : (
+                    inboxTasks.map((task) => (
+                      <DraggableTaskCard key={task.id} task={task} onUpdate={fetchTasks} />
+                    ))
+                  )}
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto space-y-2">
-                {inboxTasks.length === 0 ? (
-                  <div className="text-center text-muted-foreground lowercase text-sm py-8">
-                    inbox empty
-                  </div>
-                ) : (
-                  inboxTasks.map((task) => (
-                    <DraggableTaskCard key={task.id} task={task} onUpdate={fetchTasks} />
-                  ))
-                )}
-              </div>
-            </div>
+            </DroppableDay>
           )}
         </div>
 
@@ -344,54 +390,14 @@ const Calendar = () => {
                             {dayTasks
                               .filter((t) => t.time_block_start)
                               .map((task) => (
-                                <div key={task.id} className="bg-background rounded-md p-2 border border-border shadow-sm">
-                                  <div className="flex items-start gap-2 mb-1">
-                                    {task.priority === "urgent" && (
-                                      <div className="w-1 h-full bg-red-500 rounded-full" />
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-sm font-medium truncate">{task.title}</div>
-                                      {task.clients?.name && (
-                                        <div className="text-xs text-muted-foreground">{task.clients.name}</div>
-                                      )}
-                                      {task.time_block_start && task.time_block_end && (
-                                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                          <Clock className="h-3 w-3" />
-                                          {formatTimeBlock(task.time_block_start, task.time_block_end)}
-                                        </div>
-                                      )}
-                                      {task.parent_task_id && (
-                                        <Badge variant="secondary" className="text-xs lowercase mt-1">
-                                          recurring
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
+                                <DraggableTaskCard key={task.id} task={task} onUpdate={fetchTasks} />
                               ))}
                             
                             {/* Tasks without time blocks */}
                             {dayTasks
                               .filter((t) => !t.time_block_start)
                               .map((task) => (
-                                <div key={task.id} className="bg-background rounded-md p-2 border border-border">
-                                  <div className="flex items-start gap-2">
-                                    {task.priority === "urgent" && (
-                                      <div className="w-1 h-full bg-red-500 rounded-full" />
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-sm font-medium truncate">{task.title}</div>
-                                      {task.clients?.name && (
-                                        <div className="text-xs text-muted-foreground">{task.clients.name}</div>
-                                      )}
-                                      {task.parent_task_id && (
-                                        <Badge variant="secondary" className="text-xs lowercase mt-1">
-                                          recurring
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
+                                <DraggableTaskCard key={task.id} task={task} onUpdate={fetchTasks} />
                               ))}
 
                             <Button
