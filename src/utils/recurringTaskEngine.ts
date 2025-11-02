@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { format, isToday, getDay, getDate, getDaysInMonth, addDays, addMonths, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
+import { format, getDay, getDate, getDaysInMonth, addDays, addMonths, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
 
 export interface RecurringTask {
   id: string;
@@ -129,11 +129,8 @@ export async function runRecurringTaskEngine(): Promise<number> {
     
     console.log("Last run:", lastRunDate);
     
-    // Only run if last run was yesterday or earlier, or never run
-    if (lastRunDate && isToday(lastRunDate)) {
-      console.log("⏭️ Engine already ran today, skipping");
-      return 0;
-    }
+    // Always run; duplicate prevention handled per-task by checking existing instances
+    console.log("🔄 Running engine check...");
 
     // Fetch all active recurring tasks
     const { data: recurringTasks, error } = await supabase
