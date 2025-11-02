@@ -3,11 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from "lucide-react";
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, isSameDay, isToday, isPast } from "date-fns";
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, isSameDay, isToday, isTomorrow, isPast } from "date-fns";
 import DraggableTaskCard from "@/components/DraggableTaskCard";
 import DroppableDay from "@/components/DroppableDay";
 import TaskBadge from "@/components/TaskBadge";
 import TaskDetailModal from "@/components/TaskDetailModal";
+import CompactTaskCard from "@/components/CompactTaskCard";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import QuickCaptureModal from "@/components/QuickCaptureModal";
@@ -262,6 +263,25 @@ const Calendar = () => {
     return tasks.filter((t) => t.due_date && isSameDay(new Date(t.due_date), day));
   };
 
+  const getTodayTasks = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return tasks.filter((t) => 
+      t.status === "today" || 
+      (t.due_date && isSameDay(new Date(t.due_date), today))
+    );
+  };
+
+  const getTomorrowTasks = () => {
+    const today = new Date();
+    const tomorrow = addDays(today, 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tasks.filter((t) => 
+      t.status === "tomorrow" || 
+      (t.due_date && isSameDay(new Date(t.due_date), tomorrow))
+    );
+  };
+
   const formatTimeBlock = (start: string | null, end: string | null) => {
     if (!start || !end) return null;
     const startTime = format(new Date(start), "h:mm a");
@@ -447,12 +467,73 @@ const Calendar = () => {
                       </div>
                     </DroppableDay>
                   );
-                })}
+                  })}
+          </div>
+        </div>
+      </div>
+      {/* Close Week Grid container */}
+
+        {/* Today & Tomorrow Section */}
+        <div className="border-t border-border mt-6 pt-6 px-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-2 gap-6">
+              {/* Today Column */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-lg font-semibold lowercase">today</h3>
+                  <Badge variant="secondary" className="lowercase">
+                    {getTodayTasks().length}
+                  </Badge>
+                </div>
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {getTodayTasks().length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground lowercase text-sm">
+                      nothing scheduled for today
+                    </div>
+                  ) : (
+                    getTodayTasks().map((task) => (
+                      <CompactTaskCard
+                        key={task.id}
+                        task={task}
+                        onClick={() => setSelectedTask(task)}
+                        onUpdate={fetchTasks}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Tomorrow Column */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-lg font-semibold lowercase">tomorrow</h3>
+                  <Badge variant="secondary" className="lowercase">
+                    {getTomorrowTasks().length}
+                  </Badge>
+                </div>
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {getTomorrowTasks().length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground lowercase text-sm">
+                      nothing scheduled for tomorrow
+                    </div>
+                  ) : (
+                    getTomorrowTasks().map((task) => (
+                      <CompactTaskCard
+                        key={task.id}
+                        task={task}
+                        onClick={() => setSelectedTask(task)}
+                        onUpdate={fetchTasks}
+                      />
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+      {/* Close flex h-full */}
+    </div>
 
       <DragOverlay>
         {activeTask ? (
