@@ -101,8 +101,22 @@ const Calendar = () => {
     const taskId = active.id as string;
     const dateString = over.id as string;
 
-    // Parse the date from the droppable id
-    const targetDate = new Date(dateString);
+    console.log("Drop event:", { taskId, dateString, overId: over.id });
+
+    // Parse the date from the droppable id (it's an ISO string)
+    let targetDate: Date;
+    try {
+      targetDate = new Date(dateString);
+      if (isNaN(targetDate.getTime())) {
+        console.error("Invalid date:", dateString);
+        toast.error("invalid date");
+        return;
+      }
+    } catch (err) {
+      console.error("Date parsing error:", err);
+      toast.error("failed to parse date");
+      return;
+    }
     
     if (isPast(targetDate) && !isToday(targetDate)) {
       toast.error("cannot schedule tasks on past dates");
@@ -112,46 +126,71 @@ const Calendar = () => {
     // Determine status based on date
     let newStatus = "this_week";
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const tomorrow = addDays(today, 1);
+    const weekEnd = endOfWeek(today, { weekStartsOn: 0 });
+    
+    targetDate.setHours(0, 0, 0, 0);
     
     if (isSameDay(targetDate, today)) {
       newStatus = "today";
     } else if (isSameDay(targetDate, tomorrow)) {
       newStatus = "tomorrow";
-    } else if (targetDate > endOfWeek(today, { weekStartsOn: 0 })) {
+    } else if (targetDate > weekEnd) {
       newStatus = "next_week";
     }
 
-    // Optimistic update - find task and update it
-    const updatedTask = [...tasks, ...inboxTasks].find(t => t.id === taskId);
-    if (!updatedTask) return;
+    console.log("Calculated status:", newStatus, "for date:", targetDate);
 
+    // Find the task being dropped
+    const sourceTask = [...tasks, ...inboxTasks].find(t => t.id === taskId);
+    if (!sourceTask) {
+      console.error("Task not found:", taskId);
+      toast.error("task not found");
+      return;
+    }
+
+    console.log("Source task:", sourceTask);
+
+    // Format date for database (YYYY-MM-DD)
+    const formattedDate = format(targetDate, "yyyy-MM-dd");
+    console.log("Formatted date for DB:", formattedDate);
+
+    // Optimistic update
     const updated = { 
-      ...updatedTask, 
-      due_date: format(targetDate, "yyyy-MM-dd"), 
+      ...sourceTask, 
+      due_date: formattedDate, 
       status: newStatus 
     };
 
-    // Update state immediately for visual feedback
     setTasks(prev => {
       const filtered = prev.filter(t => t.id !== taskId);
       return [...filtered, updated];
     });
     setInboxTasks(prev => prev.filter(t => t.id !== taskId));
 
+    // Update database
     try {
-      const { error } = await supabase
+      console.log("Updating task in DB:", { taskId, due_date: formattedDate, status: newStatus });
+      
+      const { data, error } = await supabase
         .from("tasks")
         .update({ 
-          due_date: format(targetDate, "yyyy-MM-dd"),
+          due_date: formattedDate,
           status: newStatus
         })
-        .eq("id", taskId);
+        .eq("id", taskId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
       
+      console.log("Update successful:", data);
       toast.success(`task scheduled for ${format(targetDate, "MMM d")}`);
     } catch (error: any) {
+      console.error("Failed to update task:", error);
       toast.error(`failed to schedule: ${error.message}`);
       fetchTasks(); // Revert on error
     }
