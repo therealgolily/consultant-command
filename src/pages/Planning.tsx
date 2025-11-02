@@ -291,7 +291,14 @@ const Planning = () => {
       <RecurringTaskModal
         open={showRecurringModal}
         onOpenChange={setShowRecurringModal}
-        onSuccess={fetchRecurringTasks}
+        onSuccess={async () => {
+          const instancesCreated = await runRecurringTaskEngine();
+          if (instancesCreated > 0) {
+            toast.success(`created ${instancesCreated} recurring ${instancesCreated === 1 ? "task" : "tasks"}`);
+          }
+          fetchRecurringTasks();
+          fetchTasks();
+        }}
       />
 
       <QuickCaptureModal
