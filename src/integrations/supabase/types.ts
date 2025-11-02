@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           category: string | null
           client_name: string | null
+          completed_at: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -29,6 +30,7 @@ export type Database = {
         Insert: {
           category?: string | null
           client_name?: string | null
+          completed_at?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -40,6 +42,7 @@ export type Database = {
         Update: {
           category?: string | null
           client_name?: string | null
+          completed_at?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
