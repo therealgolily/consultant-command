@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Plus } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, isSameDay, isToday, isPast } from "date-fns";
 import DraggableTaskCard from "@/components/DraggableTaskCard";
 import DroppableDay from "@/components/DroppableDay";
@@ -287,13 +287,24 @@ const Calendar = () => {
               isPast={false}
             >
               <div className="p-4 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold lowercase">inbox</h3>
                   <Badge variant="secondary" className="lowercase">{inboxTasks.length}</Badge>
                 </div>
-                <div className="text-xs text-muted-foreground mb-2 lowercase">
+                <div className="text-xs text-muted-foreground mb-3 lowercase">
                   drag tasks here to unschedule
                 </div>
+                <Button
+                  onClick={() => {
+                    setSelectedDate(null);
+                    setQuickCaptureOpen(true);
+                  }}
+                  size="sm"
+                  className="w-full mb-4 lowercase"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  new task
+                </Button>
                 <div className="flex-1 overflow-y-auto space-y-2">
                   {inboxTasks.length === 0 ? (
                     <div className="text-center text-muted-foreground lowercase text-sm py-8">
@@ -381,7 +392,8 @@ const Calendar = () => {
                               onClick={() => openQuickCapture(day)}
                               className="lowercase text-xs"
                             >
-                              + add task
+                              <Plus className="w-3 h-3 mr-1" />
+                              add
                             </Button>
                           </div>
                         ) : (
@@ -406,7 +418,8 @@ const Calendar = () => {
                               onClick={() => openQuickCapture(day)}
                               className="w-full lowercase text-xs mt-2"
                             >
-                              + add task
+                              <Plus className="w-3 h-3 mr-1" />
+                              add
                             </Button>
                           </>
                         )}
