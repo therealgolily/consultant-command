@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import QuickCaptureModal from "@/components/QuickCaptureModal";
+import { runRecurringTaskEngine } from "@/utils/recurringTaskEngine";
 
 interface Task {
   id: string;
@@ -66,6 +67,16 @@ const Calendar = () => {
 
   useEffect(() => {
     fetchTasks();
+
+    // Auto-run recurring task engine on mount
+    const runEngineOnMount = async () => {
+      const instancesCreated = await runRecurringTaskEngine();
+      if (instancesCreated > 0) {
+        toast.success(`created ${instancesCreated} recurring ${instancesCreated === 1 ? "task" : "tasks"}`);
+        fetchTasks();
+      }
+    };
+    runEngineOnMount();
 
     const channel = supabase
       .channel("calendar-tasks-changes")

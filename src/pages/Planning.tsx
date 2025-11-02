@@ -80,6 +80,16 @@ const Planning = () => {
     fetchTasks();
     fetchRecurringTasks();
 
+    // Auto-run recurring task engine on mount
+    const runEngineOnMount = async () => {
+      const instancesCreated = await runRecurringTaskEngine();
+      if (instancesCreated > 0) {
+        toast.success(`created ${instancesCreated} recurring ${instancesCreated === 1 ? "task" : "tasks"}`);
+        fetchTasks();
+      }
+    };
+    runEngineOnMount();
+
     const channel = supabase
       .channel("planning-tasks-changes")
       .on(
